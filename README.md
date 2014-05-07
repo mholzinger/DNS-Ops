@@ -1,7 +1,7 @@
 # DNS Ops 
 by Mike Holzinger
 
-### DNS utility commands for UNIX/POSIX machines.
+### DNS utility commands for OS X machines.
 
 
 #### Help
@@ -27,6 +27,8 @@ Current DNS server entries on this Mac :
 
 #### Set DNS to Automatic
 
+Set interface [Wi-Fi] to AUTO from DHCP server. This is reccomended if unable to authenticate to a proxied Public Access-Point which needs client behavior acceptance.
+
 `
 dns_ops.sh -a
 `
@@ -36,7 +38,7 @@ Setting [Wi-Fi] interface to DNS autoassign from DHCP
 DHCP set
 ```
 
-Set interface [Wi-Fi] to AUTO from DHCP server. This is reccomended if unable to authenticate to a proxied Public Access-Point which needs client behavior acceptance.
+
 
 #### Assign DNS to OpenDNS entries
 
@@ -59,3 +61,29 @@ Setting [Wi-Fi] interface to Google DNS
 New entries : 8.8.8.8 8.8.4.4
 ```
 
+#### Reset DNS cache
+
+Reset DNS cache. This command test for OS X Minor revision level and executes the appropriate reset statement.
+
+`
+dns_ops.sh -r
+`
+
+##### Lion though current [ 10.9 < 10.7 ]
+```
+Resetting DNS Cache
+Stopping mDNSResponder...
+DNS cache successfully reset.
+```
+##### Loepard and Snow Leopard [ 10.6 < 10.5 ]
+```
+Resetting DNS Cache
+Exec dscacheutil -flushcache...
+DNS cache successfully reset.
+```
+##### Tiger and earlier releases [ 10.4 < 10.1 ]
+```
+Resetting DNS Cache
+Exec lookupd -flushcache...
+DNS cache successfully reset.
+```

@@ -11,6 +11,8 @@ odns2=208.67.220.220
 # Strings
 interface=Wi-Fi
 this_machine=$( hostname )
+osx=""
+osx_minor=""
 
 # SHELL MOD
 initializeANSI()
@@ -31,9 +33,22 @@ initializeANSI()
 # THIS SCRIPT
 prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
 
+check_err(){ error_state=$(echo $?)
+    if [[ "$error_state" != "0" ]];then
+        echo $1
+        exit
+    fi
+}
+
+determine_osx_release()
+{
+	osx=$( sw_vers -productVersion )
+    osx_minor=$( sw_vers -productVersion | awk -F \. {'print $2}' )
+}
+
 print_usage()
 {
-    echo "usage: "$prog" [-a auto] [-g google] [-h help] [-o opendns] [-p print]"
+    echo "usage: "$prog" [-a auto] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
     echo "  This utility sets ["$interface"] DNS entries to Google, OpenDNS or DHCP host (auto)"
     echo "  eg: $prog -g   <--- sets the "$interface" interface to use Google DNS"
     exit;
@@ -72,18 +87,37 @@ edit_searchdomain()
 
 reset_dns_cache()
 {
-	# test for operating system version
+	# OSX Minor rev strings
+	tiger=4
+	leopard=6
+	snow_leopard=6
+	lion=7
+
+    # Test OS X Minor version and run command
 
     # 10.4 and below
-    lookupd -flushcache
+    if (( osx_minor <= tiger )); then
+	    echo "Exec lookupd -flushcache..."
+        lookupd -flushcache
+    fi
 
 	# 10.5 <> 10.6
-	sudo dscacheutil -flushcache
+    if (( ( osx_minor == leopard ) || ( osx_minor == snow_leopard ) )); then
+	    echo "Exec dscacheutil -flushcache..."
+        sudo dscacheutil -flushcache
+    fi
 
-	# 10.7 through current
-	sudo killall -HUP mDNSResponder
+    # 10.7 through current
+    if (( osx_minor >= lion )); then
+	    echo "Stopping mDNSResponder..."
+        sudo killall -HUP mDNSResponder
+    fi
+
+    check_err "DNS cache reset failed"
+    echo "DNS cache successfully reset"
 }
 
+determine_osx_release
 initializeANSI
 
 # Test for passed parameters, if none, print out DNS entry and help text
@@ -93,7 +127,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Main processing loop
-while getopts :aghop option; do
+while getopts :aghopr option; do
   case "${option}" in
     a)
         a=${OPTARG}
@@ -117,6 +151,11 @@ while getopts :aghop option; do
     p)
         p=${OPTARG}
         print_dns_entry
+        exit;;
+    r)
+        r=${OPTARG}
+        echo "Resetting DNS Cache"
+        reset_dns_cache
         exit;;
     *)
         # Evaluate passed parameters, if none display DNS and exit with help statement
