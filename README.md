@@ -10,7 +10,7 @@ dns_ops.sh -h
 `
 
 ```
-usage: dnsops.sh [-a auto] [-g google] [-h help] [-o opendns] [-p print]
+usage: dns_ops.sh [-a auto] [-g google] [-h help] [-o opendns] [-p print] [-r reset]
  This utility sets [Wi-Fi] DNS entries to Google, OpenDNS or DHCP host (auto)
   eg: dnsops.sh -g   <--- sets the Wi-Fi interface to use Google DNS
 ```

@@ -14,8 +14,17 @@ this_machine=$( hostname )
 osx=""
 osx_minor=""
 
+# OSX Minor rev strings
+tiger=4
+leopard=5
+snow_leopard=6
+lion=7
+
+# This script name
+prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
+
 # SHELL MOD
-initializeANSI()
+initialize_ANSI()
 {
 #  esc="\033" # if this doesn't work, enter an ESC directly
     esc=""
@@ -30,11 +39,9 @@ initializeANSI()
     reset="${esc}[0m";
 }
 
-# THIS SCRIPT
-prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
-
-check_err(){ error_state=$(echo $?)
-    if [[ "$error_state" != "0" ]];then
+check_err(){ 
+    error_state=$(echo $?)
+    if [[ "$error_state" != "0" ]]; then
         echo $1
         exit
     fi
@@ -42,7 +49,7 @@ check_err(){ error_state=$(echo $?)
 
 determine_osx_release()
 {
-	osx=$( sw_vers -productVersion )
+    osx=$( sw_vers -productVersion )
     osx_minor=$( sw_vers -productVersion | awk -F \. {'print $2}' )
 }
 
@@ -62,7 +69,7 @@ print_dns_entry()
         dns_value="Wi-Fi DNS is set to autoassigned DHCP Values"
     fi
 
-    echo "Current DNS server entries on [ "${greenf}$this_machine${reset}" ]:" 
+    echo "Current DNS server entries on [${bluef}$this_machine${reset}]:" 
     echo ${yellowf}$dns_value${reset}
 
 #    cat /etc/resolv.conf | sed '/#/d'
@@ -87,29 +94,23 @@ edit_searchdomain()
 
 reset_dns_cache()
 {
-	# OSX Minor rev strings
-	tiger=4
-	leopard=6
-	snow_leopard=6
-	lion=7
-
     # Test OS X Minor version and run command
 
     # 10.4 and below
     if (( osx_minor <= tiger )); then
-	    echo "Exec lookupd -flushcache..."
+        echo "Exec lookupd -flushcache..."
         lookupd -flushcache
     fi
 
-	# 10.5 <> 10.6
+    # 10.5 and 10.6
     if (( ( osx_minor == leopard ) || ( osx_minor == snow_leopard ) )); then
-	    echo "Exec dscacheutil -flushcache..."
+        echo "Exec dscacheutil -flushcache..."
         sudo dscacheutil -flushcache
     fi
 
     # 10.7 through current
     if (( osx_minor >= lion )); then
-	    echo "Stopping mDNSResponder..."
+        echo "Stopping mDNSResponder..."
         sudo killall -HUP mDNSResponder
     fi
 
@@ -117,8 +118,10 @@ reset_dns_cache()
     echo "DNS cache successfully reset"
 }
 
+### START HERE
+
 determine_osx_release
-initializeANSI
+initialize_ANSI
 
 # Test for passed parameters, if none, print out DNS entry and help text
 if [ "$#" -lt 1 ]; then
