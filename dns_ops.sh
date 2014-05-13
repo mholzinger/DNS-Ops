@@ -39,6 +39,12 @@ initialize_ANSI()
     reset="${esc}[0m";
 }
 
+highlight_after_colon()
+{
+	color_pattern=$( echo $1 | cut -d ':' -f 2)
+    echo ${1%%:*}:${greenf}${color_pattern}${reset}
+}
+
 check_err(){ 
     error_state=$(echo $?)
     if [[ "$error_state" != "0" ]]; then
@@ -64,7 +70,7 @@ print_usage()
 print_dns_entry()
 {
 	#debug stuff
-	#test_for_active_interface
+	test_for_active_interface
 	#end debug stuff
 
     dns_value=$(networksetup -getdnsservers Wi-Fi)
@@ -85,8 +91,13 @@ test_for_active_interface()
 	# Check for Wi-Fi interface and test powerstate before testing connection
 	# Get Wi-Fi interface
 	interface_dev=$( networksetup -listallhardwareports | sed -n '/Wi-Fi/{n;p;}' | awk '/Device/ {print $2}' )
-	echo $interface_dev
-	networksetup -getairportpower $interface_dev
+	power_state=$( networksetup -getairportpower $interface_dev )
+    connected_network=$( networksetup -getairportnetwork $interface_dev )
+
+    echo Networked interface overview:
+    highlight_after_colon "$interface Interface: $interface_dev"
+    highlight_after_colon "$power_state"
+	highlight_after_colon "$connected_network"
 }
 
 edit_nameserver_interface()
