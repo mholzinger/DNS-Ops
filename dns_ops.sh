@@ -63,6 +63,10 @@ print_usage()
 
 print_dns_entry()
 {
+	#debug stuff
+	#test_for_active_interface
+	#end debug stuff
+
     dns_value=$(networksetup -getdnsservers Wi-Fi)
 
     if [ "$dns_value" == "There aren't any DNS Servers set on Wi-Fi." ]; then
@@ -74,6 +78,15 @@ print_dns_entry()
 
 #    cat /etc/resolv.conf | sed '/#/d'
 #    scutil --dns | grep nameserver | cut -d : -f 2 | sort -u
+}
+
+test_for_active_interface()
+{
+	# Check for Wi-Fi interface and test powerstate before testing connection
+	# Get Wi-Fi interface
+	interface_dev=$( networksetup -listallhardwareports | sed -n '/Wi-Fi/{n;p;}' | awk '/Device/ {print $2}' )
+	echo $interface_dev
+	networksetup -getairportpower $interface_dev
 }
 
 edit_nameserver_interface()
