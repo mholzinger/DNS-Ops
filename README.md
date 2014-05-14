@@ -11,7 +11,8 @@ dns_ops.sh -h
 
 ```
 usage: dns_ops.sh [-a auto] [-d dyndns] [-g google] [-h help] [-o opendns] [-p print] [-r reset]
-  This utility sets [Wi-Fi] DNS entries to DynDNS, Google, OpenDNS or DHCP host (auto)  eg: dnsops.sh -g   <--- sets the Wi-Fi interface to use Google DNS
+  This utility sets [Wi-Fi] DNS entries to DynDNS, Google, OpenDNS or DHCP host (auto)
+  eg: dnsops.sh -g   <--- sets the Wi-Fi interface to use Google DNS
 ```
 
 #### Print current DNS entry info
