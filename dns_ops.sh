@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#--- Start DNS Table entries
 # GOOGLE DNS
 gdns1=8.8.8.8
 gdns2=8.8.4.4
@@ -8,7 +9,12 @@ gdns2=8.8.4.4
 odns1=208.67.222.222
 odns2=208.67.220.220
 
-# Strings
+# DYNDNS
+dyndns1=216.146.35.35
+dyndns2=216.146.36.36
+#--- End DNS Table entries
+
+# Variables
 interface=Wi-Fi
 this_machine=$( hostname )
 osx=""
@@ -41,7 +47,7 @@ initialize_ANSI()
 
 highlight_after_colon()
 {
-	color_pattern=$( echo $1 | cut -d ':' -f 2)
+    color_pattern=$( echo $1 | cut -d ':' -f 2)
     echo ${1%%:*}:${greenf}${color_pattern}${reset}
 }
 
@@ -61,17 +67,17 @@ determine_osx_release()
 
 print_usage()
 {
-    echo "usage: "$prog" [-a auto] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
-    echo "  This utility sets ["$interface"] DNS entries to Google, OpenDNS or DHCP host (auto)"
+    echo "usage: "$prog" [-a auto] [-d dyndns] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
+    echo "  This utility sets ["$interface"] DNS entries to DynDNS, Google, OpenDNS or DHCP host (auto)"
     echo "  eg: $prog -g   <--- sets the "$interface" interface to use Google DNS"
     exit;
 }
 
 print_dns_entry()
 {
-	#debug stuff
-	test_for_active_interface
-	#end debug stuff
+    #debug stuff
+    test_for_active_interface
+    #end debug stuff
 
     dns_value=$(networksetup -getdnsservers Wi-Fi)
 
@@ -88,16 +94,17 @@ print_dns_entry()
 
 test_for_active_interface()
 {
-	# Check for Wi-Fi interface and test powerstate before testing connection
-	# Get Wi-Fi interface
-	interface_dev=$( networksetup -listallhardwareports | sed -n '/Wi-Fi/{n;p;}' | awk '/Device/ {print $2}' )
-	power_state=$( networksetup -getairportpower $interface_dev )
-    connected_network=$( networksetup -getairportnetwork $interface_dev )
+    # Check for Wi-Fi interface and test powerstate before testing connection
+    wifi_interface=$( networksetup -listallhardwareports \
+        | sed -n '/Wi-Fi/{n;p;}' \
+        | awk '/Device/ {print $2}' )
+    wifi_power_state=$( networksetup -getairportpower $wifi_interface )
+    wifi_connected_ssid=$( networksetup -getairportnetwork $wifi_interface )
 
     echo Networked interface overview:
-    highlight_after_colon "$interface Interface: $interface_dev"
-    highlight_after_colon "$power_state"
-	highlight_after_colon "$connected_network"
+    highlight_after_colon "$interface Interface: $wifi_interface"
+    highlight_after_colon "$wifi_power_state"
+    highlight_after_colon "$wifi_connected_ssid"
 }
 
 edit_nameserver_interface()
@@ -154,12 +161,17 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Main processing loop
-while getopts :aghopr option; do
+while getopts :adghopr option; do
   case "${option}" in
     a)
         a=${OPTARG}
         echo "Setting" [$interface] "interface to DNS autoassign from DHCP"
         edit_nameserver_interface empty
+        exit;;
+    d)
+        d=${OPTARG}
+        echo "Setting" [$interface] "interface to DynDNS"
+        edit_nameserver_interface $dyndns1 $dyndns2
         exit;;
     g)
         a=${OPTARG}
@@ -171,7 +183,7 @@ while getopts :aghopr option; do
         print_usage
         exit;;
     o)
-        a=${OPTARG}
+        o=${OPTARG}
         echo "Setting" [$interface] "interface to OpenDNS"
         edit_nameserver_interface $odns1 $odns2
         exit;;
@@ -191,4 +203,3 @@ while getopts :aghopr option; do
         ;;
   esac
 done
-
