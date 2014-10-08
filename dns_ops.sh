@@ -25,6 +25,9 @@ tiger=4
 leopard=5
 snow_leopard=6
 lion=7
+mt_lion=8
+mavericks=9
+yosemite=10
 
 # This script name
 prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
@@ -34,14 +37,14 @@ initialize_ANSI()
 {
 #  esc="\033" # if this doesn't work, enter an ESC directly
     esc=""
-    blackf="${esc}[30m";   
-    redf="${esc}[31m";    
+    blackf="${esc}[30m";
+    redf="${esc}[31m";
     greenf="${esc}[32m";
-    yellowf="${esc}[33m";   
-    bluef="${esc}[34m";   
+    yellowf="${esc}[33m";
+    bluef="${esc}[34m";
     purplef="${esc}[35m";
-    cyanf="${esc}[36m";    
-    whitef="${esc}[37m";  
+    cyanf="${esc}[36m";
+    whitef="${esc}[37m";
     reset="${esc}[0m";
 }
 
@@ -51,7 +54,7 @@ highlight_after_colon()
     echo ${1%%:*}:${greenf}${color_pattern}${reset}
 }
 
-check_err(){ 
+check_err(){
     error_state=$(echo $?)
     if [[ "$error_state" != "0" ]]; then
         echo $1
@@ -85,7 +88,7 @@ print_dns_entry()
         dns_value="Wi-Fi DNS is set to autoassigned DHCP Values"
     fi
 
-    echo "Current DNS server entries on [${bluef}$this_machine${reset}]:" 
+    echo "Current DNS server entries on [${bluef}$this_machine${reset}]:"
     echo ${yellowf}$dns_value${reset}
 
 #    cat /etc/resolv.conf | sed '/#/d'
@@ -115,7 +118,7 @@ edit_nameserver_interface()
     else
         echo "New entries :" ${yellowf}$1 $2${reset}
     fi
-    sudo networksetup -setdnsservers $interface $1 $2    
+    sudo networksetup -setdnsservers $interface $1 $2
 }
 
 edit_searchdomain()
