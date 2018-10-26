@@ -1,4 +1,4 @@
-# DNS Ops 
+# DNS Ops
 by Mike Holzinger
 
 ### DNS utility commands for OS X machines.
@@ -27,16 +27,22 @@ Current DNS server entries on this Mac :
 
 #### Set DNS to Automatic
 
-Set interface [Wi-Fi] to AUTO from DHCP server. This is reccomended if unable to authenticate to a proxied Public Access-Point which needs client behavior acceptance.
+Set interface [Wi-Fi] to AUTO from DHCP server. This is recommended if unable to authenticate to a proxied Public Access-Point which needs client behavior acceptance.
 
 `
 dns_ops.sh -a
 `
 
+#### Assign DNS to CloudFlare DNS entries
+`
+dns_ops.sh -c
+`
+
 ```
-Setting [Wi-Fi] interface to DNS autoassign from DHCP
-DHCP set
+Setting [Wi-Fi] interface to Cloudflare DNS
+New entries : 1.1.1.1 1.0.0.1
 ```
+
 #### Assign DNS to DynDNS entries
 `
 dns_ops.sh -d
@@ -67,6 +73,7 @@ dns_ops.sh -o
 eg: Setting [Wi-Fi] interface to OpenDNS
 New entries : 208.67.222.222 208.67.220.220
 ```
+---
 
 #### Reset DNS cache
 
@@ -80,7 +87,7 @@ dns_ops.sh -r
 ```
 Resetting DNS Cache
 Stopping mDNSResponder...
-DNS cache successfully reset.
+DNS cache successfully reset
 ```
 ##### Loepard and Snow Leopard [ 10.6 < 10.5 ]
 ```
