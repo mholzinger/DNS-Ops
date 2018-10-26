@@ -12,6 +12,10 @@ odns2=208.67.220.220
 # DYNDNS
 dyndns1=216.146.35.35
 dyndns2=216.146.36.36
+
+# CLOUDFLARE
+cdns1=1.1.1.1
+cdns2=1.0.0.1
 #--- End DNS Table entries
 
 # Variables
@@ -70,8 +74,8 @@ determine_osx_release()
 
 print_usage()
 {
-    echo "usage: "$prog" [-a auto] [-d dyndns] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
-    echo "  This utility sets ["$interface"] DNS entries to DynDNS, Google, OpenDNS or DHCP host (auto)"
+    echo "usage: "$prog" [-a auto] [-c cloudflare] [-d dyndns] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
+    echo "  This utility sets ["$interface"] DNS entries to CloudFlare, DynDNS, Google, OpenDNS or DHCP host (auto)"
     echo "  eg: $prog -g   <--- sets the "$interface" interface to use Google DNS"
     exit;
 }
@@ -85,7 +89,8 @@ print_dns_entry()
     dns_value=$(networksetup -getdnsservers Wi-Fi)
 
     if [ "$dns_value" == "There aren't any DNS Servers set on Wi-Fi." ]; then
-        dns_value="Wi-Fi DNS is set to autoassigned DHCP Values"
+        echo "Wi-Fi DNS is set to autoassigned DHCP Values"
+        dns_value=$(grep nameserver <(scutil --dns)|awk '{print $NF}'|sort -u | paste - -)
     fi
 
     echo "Current DNS server entries on [${bluef}$this_machine${reset}]:"
@@ -164,7 +169,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Main processing loop
-while getopts :adghopr option; do
+while getopts :acdghopr option; do
   case "${option}" in
     a)
         a=${OPTARG}
@@ -175,6 +180,11 @@ while getopts :adghopr option; do
         d=${OPTARG}
         echo "Setting" [$interface] "interface to DynDNS"
         edit_nameserver_interface $dyndns1 $dyndns2
+        exit;;
+    c)
+        a=${OPTARG}
+        echo "Setting" [$interface] "interface to Cloudflare DNS"
+        edit_nameserver_interface $cdns1 $cdns2
         exit;;
     g)
         a=${OPTARG}
