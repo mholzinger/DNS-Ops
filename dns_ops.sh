@@ -16,6 +16,11 @@ dyndns2=216.146.36.36
 # CLOUDFLARE
 cdns1=1.1.1.1
 cdns2=1.0.0.1
+
+# IBM DNS
+ibm1=9.0.128.50
+ibm2=9.0.130.50
+
 #--- End DNS Table entries
 
 # Variables
@@ -169,7 +174,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Main processing loop
-while getopts :acdghopr option; do
+while getopts :acdghiopr option; do
   case "${option}" in
     a)
         a=${OPTARG}
@@ -194,6 +199,11 @@ while getopts :acdghopr option; do
     h)
         h=${OPTARG}
         print_usage
+        exit;;
+    i)
+        i=${OPTARG}
+        echo "Setting" [$interface] "interface to IBM DNS"
+        edit_nameserver_interface $ibm1 $ibm2
         exit;;
     o)
         o=${OPTARG}
