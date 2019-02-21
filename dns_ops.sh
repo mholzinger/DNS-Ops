@@ -17,9 +17,13 @@ dyndns2=216.146.36.36
 cdns1=1.1.1.1
 cdns2=1.0.0.1
 
-# IBM DNS
-ibm1=9.0.128.50
-ibm2=9.0.130.50
+# IBM Quad9
+ibm91=9.9.9.9
+ibm92=149.112.112.112
+
+# IBM Corporate DNS
+ibmc1=9.0.128.50
+ibmc2=9.0.130.50
 
 #--- End DNS Table entries
 
@@ -79,8 +83,8 @@ determine_osx_release()
 
 print_usage()
 {
-    echo "usage: "$prog" [-a auto] [-c cloudflare] [-d dyndns] [-g google] [-h help] [-o opendns] [-p print] [-r reset]"
-    echo "  This utility sets ["$interface"] DNS entries to CloudFlare, DynDNS, Google, OpenDNS or DHCP host (auto)"
+    echo "usage: "$prog" [-a auto] [-c cloudflare] [-d dyndns] [-g google] [-h help] [-i ibm quad9 ] [-o opendns] [-p print] [-r reset]"
+    echo "  This utility sets ["$interface"] DNS entries to CloudFlare, DynDNS, Google, IBM Quad9, OpenDNS or DHCP host (auto)"
     echo "  eg: $prog -g   <--- sets the "$interface" interface to use Google DNS"
     exit;
 }
@@ -174,7 +178,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Main processing loop
-while getopts :acdghiopr option; do
+while getopts :acdghioprz option; do
   case "${option}" in
     a)
         a=${OPTARG}
@@ -202,8 +206,8 @@ while getopts :acdghiopr option; do
         exit;;
     i)
         i=${OPTARG}
-        echo "Setting" [$interface] "interface to IBM DNS"
-        edit_nameserver_interface $ibm1 $ibm2
+        echo "Setting" [$interface] "interface to IBM Quad9 DNS"
+        edit_nameserver_interface $ibm91 $ibm92
         exit;;
     o)
         o=${OPTARG}
@@ -218,6 +222,11 @@ while getopts :acdghiopr option; do
         r=${OPTARG}
         echo "Resetting DNS Cache"
         reset_dns_cache
+        exit;;
+    z)
+        i=${OPTARG}
+        echo "Setting" [$interface] "interface to IBM Corp DNS"
+        edit_nameserver_interface $ibmc1 $ibmc2
         exit;;
     *)
         # Evaluate passed parameters, if none display DNS and exit with help statement
