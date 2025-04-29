@@ -41,6 +41,14 @@ lion=7
 mt_lion=8
 mavericks=9
 yosemite=10
+el_capitan=11
+sierra=12
+high_sierra=13
+mojave=14
+catalina=15
+big_sur=16
+monterey=17
+ventura=18
 
 # This script name
 prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
