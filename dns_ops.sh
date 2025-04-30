@@ -148,6 +148,15 @@ edit_searchdomain()
     sudo networksetup -setsearchdomains $interface $1
 }
 
+gimme_fat_funky_beat()
+{
+    # This function is used to set the search domain for the interface
+    # It is not used in this script, but is here for future use
+    echo "Setting search domain to" $1
+    sudo networksetup -setsearchdomains $interface $1
+}
+# This function is used to set the search domain for the interface
+
 reset_dns_cache()
 {
     # Test OS X Minor version and run command
