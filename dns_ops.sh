@@ -27,228 +27,233 @@ ibmc2=9.0.130.50
 
 #--- End DNS Table entries
 
-# Variables
-interface=Wi-Fi
-this_machine=$( hostname )
+# Variables (interface is detected at startup; fallback is "Wi-Fi")
+interface="Wi-Fi"
+this_machine=$(hostname)
 osx=""
+osx_major=""
 osx_minor=""
 
-# OSX Minor rev strings
-tiger=4
-leopard=5
-snow_leopard=6
-lion=7
-mt_lion=8
-mavericks=9
-yosemite=10
-el_capitan=11
-sierra=12
-high_sierra=13
-mojave=14
-catalina=15
-big_sur=16
-monterey=17
-ventura=18
+prog=$(basename "$0")
 
-# This script name
-prog=$( echo $0 | sed 's|^\./||' | awk '{gsub(/\/.*\//,"",$1); print}' )
-
-# SHELL MOD
 initialize_ANSI()
 {
-#  esc="\033" # if this doesn't work, enter an ESC directly
-    esc=""
-    blackf="${esc}[30m";
-    redf="${esc}[31m";
-    greenf="${esc}[32m";
-    yellowf="${esc}[33m";
-    bluef="${esc}[34m";
-    purplef="${esc}[35m";
-    cyanf="${esc}[36m";
-    whitef="${esc}[37m";
-    reset="${esc}[0m";
+    esc=$'\033'
+    blackf="${esc}[30m"
+    redf="${esc}[31m"
+    greenf="${esc}[32m"
+    yellowf="${esc}[33m"
+    bluef="${esc}[34m"
+    purplef="${esc}[35m"
+    cyanf="${esc}[36m"
+    whitef="${esc}[37m"
+    reset="${esc}[0m"
 }
 
 highlight_after_colon()
 {
-    color_pattern=$( echo $1 | cut -d ':' -f 2)
-    echo ${1%%:*}:${greenf}${color_pattern}${reset}
+    # If there's no colon, just print the line as-is (no duplication).
+    if [[ "$1" != *:* ]]; then
+        echo "$1"
+        return
+    fi
+    echo "${1%%:*}:${greenf}${1#*:}${reset}"
 }
 
-check_err(){
-    error_state=$(echo $?)
+check_err()
+{
+    local error_state=$?
     if [[ "$error_state" != "0" ]]; then
-        echo $1
-        exit
+        echo "$1" >&2
+        exit "$error_state"
     fi
 }
 
 determine_osx_release()
 {
-    osx=$( sw_vers -productVersion )
-    osx_minor=$( sw_vers -productVersion | awk -F \. {'print $2}' )
+    osx=$(sw_vers -productVersion)
+    osx_major=$(echo "$osx" | awk -F. '{print $1}')
+    osx_minor=$(echo "$osx" | awk -F. '{print $2}')
+}
+
+detect_active_interface()
+{
+    local default_device hwport
+    default_device=$(route -n get default 2>/dev/null | awk '/interface:/ {print $2}')
+    if [ -n "$default_device" ]; then
+        hwport=$(networksetup -listallhardwareports 2>/dev/null | awk -v dev="$default_device" '
+            /^Hardware Port:/ {
+                port = substr($0, index($0, ":") + 2)
+            }
+            /^Device:/ {
+                if ($2 == dev) { print port; exit }
+            }')
+    fi
+    if [ -n "$hwport" ]; then
+        interface="$hwport"
+    else
+        interface="Wi-Fi"
+    fi
 }
 
 print_usage()
 {
-    echo "usage: "$prog" [-a auto] [-c cloudflare] [-d dyndns] [-g google] [-h help] [-i ibm quad9 ] [-o opendns] [-p print] [-r reset]"
-    echo "  This utility sets ["$interface"] DNS entries to CloudFlare, DynDNS, Google, IBM Quad9, OpenDNS or DHCP host (auto)"
-    echo "  eg: $prog -g   <--- sets the "$interface" interface to use Google DNS"
-    exit;
+    echo "usage: $prog [-1] [-a] [-c] [-d] [-g] [-h] [-i] [-o] [-p] [-r] [-z]"
+    echo "  Sets DNS entries on the active interface [$interface]:"
+    echo "    -1  Cloudflare (1.1.1.1 only, single server)"
+    echo "    -a  Auto (DHCP assigned)"
+    echo "    -c  Cloudflare (1.1.1.1 + 1.0.0.1)"
+    echo "    -d  DynDNS"
+    echo "    -g  Google"
+    echo "    -h  Help"
+    echo "    -i  IBM Quad9"
+    echo "    -o  OpenDNS"
+    echo "    -p  Print current DNS settings"
+    echo "    -r  Reset DNS cache"
+    echo "    -z  IBM Corporate DNS"
+    exit
 }
 
 print_dns_entry()
 {
-    #debug stuff
     test_for_active_interface
-    #end debug stuff
 
-    dns_value=$(networksetup -getdnsservers Wi-Fi)
+    local dns_value
+    dns_value=$(networksetup -getdnsservers "$interface")
 
-    if [ "$dns_value" == "There aren't any DNS Servers set on Wi-Fi." ]; then
-        echo "Wi-Fi DNS is set to autoassigned DHCP Values"
-        dns_value=$(grep nameserver <(scutil --dns)|awk '{print $NF}'|sort -u | paste - -)
+    if [[ "$dns_value" == "There aren't any DNS Servers set on"* ]]; then
+        echo "$interface DNS is set to autoassigned DHCP values"
+        dns_value=$(grep nameserver <(scutil --dns) | awk '{print $NF}' | sort -u | paste - -)
     fi
 
-    echo "Current DNS server entries on [${bluef}$this_machine${reset}]:"
-    echo ${yellowf}$dns_value${reset}
-
-#    cat /etc/resolv.conf | sed '/#/d'
-#    scutil --dns | grep nameserver | cut -d : -f 2 | sort -u
+    echo "Current DNS server entries on [${bluef}${this_machine}${reset}]:"
+    echo "${yellowf}${dns_value}${reset}"
 }
 
 test_for_active_interface()
 {
-    # Check for Wi-Fi interface and test powerstate before testing connection
-    wifi_interface=$( networksetup -listallhardwareports \
-        | sed -n '/Wi-Fi/{n;p;}' \
-        | awk '/Device/ {print $2}' )
-    wifi_power_state=$( networksetup -getairportpower $wifi_interface )
-    wifi_connected_ssid=$( networksetup -getairportnetwork $wifi_interface )
+    echo "Networked interface overview:"
 
-    echo Networked interface overview:
-    highlight_after_colon "$interface Interface: $wifi_interface"
-    highlight_after_colon "$wifi_power_state"
-    highlight_after_colon "$wifi_connected_ssid"
+    local device
+    device=$(networksetup -listallhardwareports 2>/dev/null | awk -v port="$interface" '
+        /^Hardware Port:/ {
+            current = substr($0, index($0, ":") + 2)
+            match_port = (current == port)
+        }
+        /^Device:/ {
+            if (match_port) { print $2; exit }
+        }')
+
+    highlight_after_colon "Interface: $interface"
+    [ -n "$device" ] && highlight_after_colon "Device: $device"
+
+    # Wi-Fi specific extras
+    if [ "$interface" = "Wi-Fi" ] && [ -n "$device" ]; then
+        local power_state ssid
+        power_state=$(networksetup -getairportpower "$device" 2>/dev/null)
+        [ -n "$power_state" ] && highlight_after_colon "$power_state"
+
+        # macOS 14+ redacts SSID from every userspace source unless the
+        # caller has Location Services permission. The "<redacted>"
+        # literal coming back IS the detector — no separate API needed.
+        local ssid
+        ssid=$(ipconfig getsummary "$device" 2>/dev/null \
+            | awk -F ' SSID : ' '/ SSID : / {print $2; exit}')
+        if [ "$ssid" = "<redacted>" ]; then
+            echo "${yellowf}Warning:${reset} Location Services not granted to this terminal — SSID unavailable"
+        elif [ -n "$ssid" ]; then
+            highlight_after_colon "SSID: $ssid"
+        fi
+        # ssid empty => not connected to Wi-Fi; stay quiet
+    fi
 }
 
 edit_nameserver_interface()
 {
-    # USING NETWORKSETUP
-    if [ "$1" == "empty" ]; then
-        echo ${yellowf}"DHCP set"${reset}
+    if [ "$1" = "empty" ]; then
+        echo "${yellowf}DHCP set${reset}"
+        sudo networksetup -setdnsservers "$interface" empty
     else
-        echo "New entries :" ${yellowf}$1 $2${reset}
+        echo "New entries: ${yellowf}$*${reset}"
+        sudo networksetup -setdnsservers "$interface" "$@"
     fi
-    sudo networksetup -setdnsservers $interface $1 $2
+    check_err "Failed to update DNS servers on [$interface]"
 }
-
-edit_searchdomain()
-{
-    sudo networksetup -setsearchdomains $interface $1
-}
-
-gimme_fat_funky_beat()
-{
-    # This function is used to set the search domain for the interface
-    # It is not used in this script, but is here for future use
-    echo "Setting search domain to" $1
-    sudo networksetup -setsearchdomains $interface $1
-}
-# This function is used to set the search domain for the interface
 
 reset_dns_cache()
 {
-    # Test OS X Minor version and run command
-
-    # 10.4 and below
-    if (( osx_minor <= tiger )); then
-        echo "Exec lookupd -flushcache..."
-        lookupd -flushcache
-    fi
-
-    # 10.5 and 10.6
-    if (( ( osx_minor == leopard ) || ( osx_minor == snow_leopard ) )); then
-        echo "Exec dscacheutil -flushcache..."
-        sudo dscacheutil -flushcache
-    fi
-
-    # 10.7 through current
-    if (( osx_minor >= lion )); then
+    # macOS Lion (10.7) and later all use mDNSResponder.
+    # Anything older is no longer supported.
+    if (( osx_major >= 11 )) || (( osx_major == 10 && osx_minor >= 7 )); then
         echo "Stopping mDNSResponder..."
         sudo killall -HUP mDNSResponder
+        check_err "DNS cache reset failed"
+        echo "DNS cache successfully reset"
+    else
+        echo "Unsupported macOS version: $osx" >&2
+        exit 1
     fi
-
-    check_err "DNS cache reset failed"
-    echo "DNS cache successfully reset"
 }
 
 ### START HERE
 
 determine_osx_release
 initialize_ANSI
+detect_active_interface
 
-# Test for passed parameters, if none, print out DNS entry and help text
 if [ "$#" -lt 1 ]; then
-    echo $prog": too few arguments"
-    echo "Try '"$prog" -h' for more information."
+    echo "$prog: too few arguments"
+    echo "Try '$prog -h' for more information."
+    exit 1
 fi
 
-# Main processing loop
-while getopts :acdghioprz option; do
-  case "${option}" in
-    a)
-        a=${OPTARG}
-        echo "Setting" [$interface] "interface to DNS autoassign from DHCP"
-        edit_nameserver_interface empty
-        exit;;
-    d)
-        d=${OPTARG}
-        echo "Setting" [$interface] "interface to DynDNS"
-        edit_nameserver_interface $dyndns1 $dyndns2
-        exit;;
-    c)
-        a=${OPTARG}
-        echo "Setting" [$interface] "interface to Cloudflare DNS"
-        edit_nameserver_interface $cdns1 $cdns2
-        exit;;
-    g)
-        a=${OPTARG}
-        echo "Setting" [$interface] "interface to Google DNS"
-        edit_nameserver_interface $gdns1 $gdns2
-        exit;;
-    h)
-        h=${OPTARG}
-        print_usage
-        exit;;
-    i)
-        i=${OPTARG}
-        echo "Setting" [$interface] "interface to IBM Quad9 DNS"
-        edit_nameserver_interface $ibm91 $ibm92
-        exit;;
-    o)
-        o=${OPTARG}
-        echo "Setting" [$interface] "interface to OpenDNS"
-        edit_nameserver_interface $odns1 $odns2
-        exit;;
-    p)
-        p=${OPTARG}
-        print_dns_entry
-        exit;;
-    r)
-        r=${OPTARG}
-        echo "Resetting DNS Cache"
-        reset_dns_cache
-        exit;;
-    z)
-        i=${OPTARG}
-        echo "Setting" [$interface] "interface to IBM Corp DNS"
-        edit_nameserver_interface $ibmc1 $ibmc2
-        exit;;
-    *)
-        # Evaluate passed parameters, if none display DNS and exit with help statement
-        echo $prog: illegal option -- ${OPTARG}
-        print_usage
-        ;;
-  esac
+while getopts ":1acdghioprz" option; do
+    case "${option}" in
+        1)
+            echo "Setting [$interface] interface to Cloudflare DNS (single server)"
+            edit_nameserver_interface "$cdns1"
+            exit;;
+        a)
+            echo "Setting [$interface] interface to DNS autoassign from DHCP"
+            edit_nameserver_interface empty
+            exit;;
+        c)
+            echo "Setting [$interface] interface to Cloudflare DNS"
+            edit_nameserver_interface "$cdns1" "$cdns2"
+            exit;;
+        d)
+            echo "Setting [$interface] interface to DynDNS"
+            edit_nameserver_interface "$dyndns1" "$dyndns2"
+            exit;;
+        g)
+            echo "Setting [$interface] interface to Google DNS"
+            edit_nameserver_interface "$gdns1" "$gdns2"
+            exit;;
+        h)
+            print_usage
+            exit;;
+        i)
+            echo "Setting [$interface] interface to IBM Quad9 DNS"
+            edit_nameserver_interface "$ibm91" "$ibm92"
+            exit;;
+        o)
+            echo "Setting [$interface] interface to OpenDNS"
+            edit_nameserver_interface "$odns1" "$odns2"
+            exit;;
+        p)
+            print_dns_entry
+            exit;;
+        r)
+            echo "Resetting DNS Cache"
+            reset_dns_cache
+            exit;;
+        z)
+            echo "Setting [$interface] interface to IBM Corp DNS"
+            edit_nameserver_interface "$ibmc1" "$ibmc2"
+            exit;;
+        *)
+            echo "$prog: illegal option -- ${OPTARG}" >&2
+            print_usage
+            ;;
+    esac
 done
